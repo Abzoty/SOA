@@ -1,4 +1,42 @@
-in each service folder create an environment <code>python -m venv venv</code>
-install the requirments in the requirments.txt file
-to run services aactivate their environment <code>venv\activate\scripts</code> and then run the app.py file <code>python app.py<\code>
-to complile the front end and host it using tomcat, first generate the .war file <code>mvn clean package<\code>, then move it to the webapps folder inside the tomcat`s installation folder
+# Service Setup and Deployment Guide
+
+## Backend Services Setup
+
+1. **Create Virtual Environment**
+   - Navigate to each service folder and run:
+     ```bash
+     python -m venv venv
+     ```
+
+2. **Install Requirements**
+   - Install dependencies from requirements.txt:
+     ```bash
+     pip install -r requirements.txt
+     ```
+
+3. **Run Services**
+   - Activate the virtual environment:
+     - Windows:
+       ```bash
+       .\venv\Scripts\activate
+       ```
+     - Linux/Mac:
+       ```bash
+       source venv/bin/activate
+       ```
+   - Start the application:
+     ```bash
+     python app.py
+     ```
+
+## Frontend Deployment
+
+1. **Build WAR File**
+   - Generate the deployment package:
+     ```bash
+     mvn clean package
+     ```
+
+2. **Deploy to Tomcat**
+   - Move the generated `.war` file to your Tomcat installation's `webapps` directory
+   - Tomcat will automatically deploy the application
