@@ -47,7 +47,6 @@
             }
         </style>
     </head>
-
     <body>
         <div class="links">
             <a href="health" class="button">Check System Health</a>
