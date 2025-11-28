@@ -1,8 +1,8 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import mysql.connector
-import requests
 from datetime import datetime
+import requests
 
 app = Flask(__name__)
 CORS(app)
@@ -75,6 +75,18 @@ def list_customers():
     finally:
         cursor.close()
         conn.close()
+
+# TODO: Integrate with Order Service to fetch customer orders
+# @app.route('/api/customers/<int:customer_id>/orders', methods=['GET'])
+# def get_customer_orders(customer_id):
+#     try:
+#         response = requests.get(f"{ORDER_SERVICE_URL}/api/orders/customer/{customer_id}")
+#         if response.status_code != 200:
+#             return jsonify({'error': 'Failed to fetch orders from Order Service'}), response.status_code
+#         orders = response.json()
+#         return jsonify({'orders': orders}), 200
+#     except requests.exceptions.RequestException as e:
+#         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/customers/<int:customer_id>/loyalty', methods=['PUT'])
 def update_loyalty(customer_id):

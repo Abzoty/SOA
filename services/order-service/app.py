@@ -55,6 +55,29 @@ def get_order(order_id):
         return jsonify({'error': 'Order not found'}), 404
     return jsonify(order), 200
 
+# TODO: Integrate with Customer Service to get order history
+# @app.route('/api/orders/customer/<int:customer_id>', methods=['GET'])
+# def get_customer_orders(customer_id):
+#     conn = get_db_connection()
+#     if not conn:
+#         return jsonify({'error': 'Database connection failed'}), 500
+    
+#     try:
+#         cursor = conn.cursor(dictionary=True)
+#         cursor.execute(
+#             "SELECT * FROM orders WHERE customer_id = %s",
+#             (customer_id,)
+#         )
+#         orders = cursor.fetchall()
+        
+#         return jsonify({'orders': orders}), 200
+        
+#     except mysql.connector.Error as err:
+#         return jsonify({'error': str(err)}), 500
+#     finally:
+#         cursor.close()
+#         conn.close()
+
 if __name__ == '__main__':
     print("Order Service starting on port 5001...")
     app.run(host='0.0.0.0', port=5001, debug=True)

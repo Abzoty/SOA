@@ -108,7 +108,7 @@ def update_inventory():
         
         # Update quantity
         cursor.execute(
-            "UPDATE inventory SET quantity_available = quantity_available + %s WHERE product_id = %s",
+            "UPDATE inventory SET quantity_available = quantity_available - %s WHERE product_id = %s",
             (data['quantity_change'], data['product_id'])
         )
         conn.commit()
