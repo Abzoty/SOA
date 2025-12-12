@@ -59,12 +59,12 @@ def calculate_pricing():
             
             inv_data = inv_response.json()
             # Check stock availability
-            if inv_data.get('in_stock', False):
-                return jsonify({'error': f'Product [{product_id}:{product.product_name}] is out of stock'}), 400
+            if inv_data['quantity_available'] <= 0:
+                return jsonify({'error': f'Product {product_id} is out of stock'}), 400
             else: # Adjust quantity if requested exceeds available stock
                 available_qty = inv_data['quantity_available']
                 if quantity > available_qty:
-                    print(f"Requested quantity for product [{product_id}:{product.product_name}] exceeds available stock. Adjusting to available quantity ➡ {available_qty}.")
+                    print(f"Requested quantity for product {product_id} exceeds available stock. Adjusting to available quantity ➡ {available_qty}.")
                     quantity = available_qty
             base_price = inv_data['unit_price']
             

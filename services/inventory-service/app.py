@@ -87,29 +87,39 @@ def list_inventory():
 @app.route('/api/inventory/update', methods=['PUT'])
 def update_inventory():
     data = request.get_json()
-    
     if not data or 'products' not in data:
         return jsonify({'error': 'Missing products list'}), 400
-    
+
     conn = get_db_connection()
     if not conn:
         return jsonify({'error': 'Database connection failed'}), 500
-    
+
     try:
-        cursor = conn.cursor(dictionary=True)
-        
-        # Update quantity
-        for product in data['products']:
+        cursor = conn.cursor()
+        # Validate quantities first
+        for p in data['products']:
+            pid = p['product_id']
+            qty = int(p['quantity'])
+            cursor.execute("SELECT quantity_available FROM inventory WHERE product_id = %s FOR UPDATE", (pid,))
+            row = cursor.fetchone()
+            if not row:
+                conn.rollback()
+                return jsonify({'error': f'Product {pid} not found'}), 404
+            if row[0] < qty:
+                conn.rollback()
+                return jsonify({'error': f'Insufficient stock for product {pid}'}), 400
+
+        # Proceed to decrement
+        for p in data['products']:
+            pid = p['product_id']
+            qty = int(p['quantity'])
             cursor.execute(
                 "UPDATE inventory SET quantity_available = quantity_available - %s WHERE product_id = %s",
-                (product['quantity'], product['product_id'])
+                (qty, pid)
             )
         conn.commit()
-        
-        return jsonify({
-            'success': True,
-        }), 200
-        
+        return jsonify({'success': True}), 200
+
     except mysql.connector.Error as err:
         conn.rollback()
         return jsonify({'error': str(err)}), 500
