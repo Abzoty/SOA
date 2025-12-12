@@ -36,8 +36,8 @@ def health_check():
 def calculate_pricing():
     data = request.get_json()
     
-    if not data or 'products' not in data:
-        return jsonify({'error': 'Missing products list'}), 400
+    if not data or 'products' not in data or 'region' not in data:
+        return jsonify({'error': 'Missing products list, or region'}), 400
     
     conn = get_db_connection()
     if not conn:
@@ -58,6 +58,14 @@ def calculate_pricing():
                 continue
             
             inv_data = inv_response.json()
+            # Check stock availability
+            if inv_data.get('in_stock', False):
+                return jsonify({'error': f'Product [{product_id}:{product.product_name}] is out of stock'}), 400
+            else: # Adjust quantity if requested exceeds available stock
+                available_qty = inv_data['quantity_available']
+                if quantity > available_qty:
+                    print(f"Requested quantity for product [{product_id}:{product.product_name}] exceeds available stock. Adjusting to available quantity ➡ {available_qty}.")
+                    quantity = available_qty
             base_price = inv_data['unit_price']
             
             # Check for discount rules
@@ -84,7 +92,7 @@ def calculate_pricing():
             subtotal += item_total
         
         # Get tax rate (default to Cairo)
-        region = data.get('region', 'Cairo')
+        region = data['region']
         cursor.execute("SELECT tax_rate FROM tax_rates WHERE region = %s", (region,))
         tax_rule = cursor.fetchone()
         tax_rate = float(tax_rule['tax_rate']) if tax_rule else 0

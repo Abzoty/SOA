@@ -24,17 +24,9 @@ def get_db_connection():
 
 @app.route('/health', methods=['GET'])
 def health_check():
-    conn = get_db_connection()
-    if conn:
-        conn.close()
-        db_status = 'connected'
-    else:
-        db_status = 'disconnected'
-    
     return jsonify({
         'status': 'healthy',
         'service': 'Inventory Service',
-        'database': db_status,
         'timestamp': datetime.now().isoformat()
     }), 200
 
@@ -96,8 +88,8 @@ def list_inventory():
 def update_inventory():
     data = request.get_json()
     
-    if not data or 'product_id' not in data or 'quantity_change' not in data:
-        return jsonify({'error': 'Missing required fields'}), 400
+    if not data or 'products' not in data:
+        return jsonify({'error': 'Missing products list'}), 400
     
     conn = get_db_connection()
     if not conn:
@@ -107,25 +99,15 @@ def update_inventory():
         cursor = conn.cursor(dictionary=True)
         
         # Update quantity
-        cursor.execute(
-            "UPDATE inventory SET quantity_available = quantity_available - %s WHERE product_id = %s",
-            (data['quantity_change'], data['product_id'])
-        )
+        for product in data['products']:
+            cursor.execute(
+                "UPDATE inventory SET quantity_available = quantity_available - %s WHERE product_id = %s",
+                (product['quantity'], product['product_id'])
+            )
         conn.commit()
-        
-        # Get updated product
-        cursor.execute(
-            "SELECT * FROM inventory WHERE product_id = %s",
-            (data['product_id'],)
-        )
-        product = cursor.fetchone()
-        
-        if product:
-            product['unit_price'] = float(product['unit_price'])
         
         return jsonify({
             'success': True,
-            'product': product
         }), 200
         
     except mysql.connector.Error as err:
