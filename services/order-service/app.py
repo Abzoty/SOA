@@ -18,6 +18,7 @@ DB_CONFIG = {
 PRICING_SERVICE_URL = "http://localhost:5003"
 INVENTORY_SERVICE_URL = "http://localhost:5002"
 CUSTOMER_SERVICE_URL = "http://localhost:5004"
+NOTIFICATION_SERVICE_URL = "http://localhost:5005"
 
 def get_db_connection():
     try:
@@ -135,6 +136,15 @@ def create_order():
             'created_at': created_at
         }
 
+        # Create Notification request
+        try:
+            requests.post(
+                f"{NOTIFICATION_SERVICE_URL}/api/notifications/send",
+                json={'order_id': order_id, 'customer_id': customer_id}
+            )
+        except requests.RequestException as e:
+            return jsonify({'error': f'Notification service unavailable: {str(e)}'}), 502
+
         return jsonify({'success': True, 'order': order}), 201
 
     except Exception as e:
@@ -156,7 +166,7 @@ def get_order(order_id):
     try:
         cursor = conn.cursor(dictionary=True)
         cursor.execute(
-            "SELECT * FROM orders WHERE customer_id = %s",
+            "SELECT * FROM orders WHERE order_id = %s",
             (order_id,)
         )
         order = cursor.fetchone()

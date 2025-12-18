@@ -86,6 +86,6 @@ public class CreateOrderServlet extends HttpServlet {
             request.setAttribute("error", "Error: " + e.getMessage());
         }
 
-        request.getRequestDispatcher("index.jsp").forward(request, response);
+        request.getRequestDispatcher("order-confirmation.jsp").forward(request, response);
     }
 }
