@@ -30,14 +30,16 @@
                                     <th>Phone</th>
                                     <th>Loyalty Points</th>
                                     <th>Created At</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <% for (int i=0; i < customers.length(); i++) { JSONObject
-                                    customer=customers.getJSONObject(i); %>
+                                    customer=customers.getJSONObject(i); int customerId=customer.getInt("customer_id");
+                                    %>
                                     <tr>
                                         <td>
-                                            <%= customer.getInt("customer_id") %>
+                                            <%= customerId %>
                                         </td>
                                         <td>
                                             <%= customer.getString("name") %>
@@ -46,13 +48,21 @@
                                             <%= customer.getString("email") %>
                                         </td>
                                         <td>
-                                            <%= customer.optString("phone") %>
+                                            <%= customer.optString("phone", "N/A" ) %>
                                         </td>
                                         <td>
                                             <%= customer.getInt("loyalty_points") %>
                                         </td>
                                         <td>
                                             <%= customer.getString("created_at") %>
+                                        </td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <a href="updateLoyalty?customer_id=<%= customerId %>"
+                                                    class="action-btn btn-update">Update Points</a>
+                                                <a href="customerOrders?customer_id=<%= customerId %>"
+                                                    class="action-btn btn-orders">View Orders</a>
+                                            </div>
                                         </td>
                                     </tr>
                                     <% } %>
