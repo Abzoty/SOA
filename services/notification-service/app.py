@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import mysql.connector
-import requests
 from datetime import datetime
 
 app = Flask(__name__)
@@ -14,15 +13,11 @@ DB_CONFIG = {
     'database': 'ecommerce_system'
 }
 
-CUSTOMER_SERVICE_URL = "http://localhost:5004"
-INVENTORY_SERVICE_URL = "http://localhost:5002"
-
 def get_db_connection():
     try:
-        conn = mysql.connector.connect(**DB_CONFIG)
-        return conn
+        return mysql.connector.connect(**DB_CONFIG)
     except mysql.connector.Error as err:
-        print(f"Database connection error: {err}")
+        print(f"Database error: {err}")
         return None
 
 @app.route('/health', methods=['GET'])
@@ -42,28 +37,20 @@ def send_notification():
     
     order_id = data['order_id']
     customer_id = data['customer_id']
+    customer_name = data.get('customer_name', 'Customer')
+    customer_email = data.get('customer_email', 'unknown@example.com')
     
-    try:
-        # Get customer info from Customer Service
-        cust_response = requests.get(f"{CUSTOMER_SERVICE_URL}/api/customers/{customer_id}")
-        if cust_response.status_code != 200:
-            return jsonify({'error': 'Failed to retrieve customer info'}), 500
-        
-        customer = cust_response.json()
-        
-        # Generate notification message
-        message = f"Dear {customer['name']}, your order #{order_id} has been confirmed and is being processed."
-        
-        # Simulate sending email
-        print("="*60)
-        print(f"EMAIL SENT TO: {customer['email']}")
-        print(f"Subject: Order #{order_id} Confirmed")
-        print(f"Body: {message}")
-        print("="*60)
-        
-        # Log notification to database
-        conn = get_db_connection()
-        if conn:
+    message = f"Dear {customer_name}, your order #{order_id} has been confirmed and is being processed."
+    
+    print("="*60)
+    print(f"EMAIL SENT TO: {customer_email}")
+    print(f"Subject: Order #{order_id} Confirmed")
+    print(f"Body: {message}")
+    print("="*60)
+    
+    conn = get_db_connection()
+    if conn:
+        try:
             cursor = conn.cursor()
             cursor.execute(
                 "INSERT INTO notification_log (order_id, customer_id, notification_type, message) VALUES (%s, %s, %s, %s)",
@@ -72,15 +59,38 @@ def send_notification():
             conn.commit()
             cursor.close()
             conn.close()
+        except Exception as e:
+            print(f"Failed to log notification: {e}")
+    
+    return jsonify({
+        'success': True,
+        'message': 'Notification sent successfully',
+        'recipient': customer_email
+    }), 200
+
+@app.route('/api/notifications/customer/<int:customer_id>', methods=['GET'])
+def get_customer_notifications(customer_id):
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            "SELECT * FROM notification_log WHERE customer_id = %s ORDER BY sent_at DESC",
+            (customer_id,)
+        )
+        notifications = cursor.fetchall()
         
-        return jsonify({
-            'success': True,
-            'message': 'Notification sent successfully',
-            'recipient': customer['email']
-        }), 200
+        for notif in notifications:
+            notif['sent_at'] = notif['sent_at'].isoformat() if notif['sent_at'] else None
         
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'notifications': notifications}), 200
+    except mysql.connector.Error as err:
+        return jsonify({'error': str(err)}), 500
+    finally:
+        cursor.close()
+        conn.close()
 
 if __name__ == '__main__':
     print("Notification Service starting on port 5005...")

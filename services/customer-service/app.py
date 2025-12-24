@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import mysql.connector
 from datetime import datetime
-import requests
 
 app = Flask(__name__)
 CORS(app)
@@ -14,14 +13,11 @@ DB_CONFIG = {
     'database': 'ecommerce_system'
 }
 
-ORDER_SERVICE_URL = "http://localhost:5001"
-
 def get_db_connection():
     try:
-        conn = mysql.connector.connect(**DB_CONFIG)
-        return conn
+        return mysql.connector.connect(**DB_CONFIG)
     except mysql.connector.Error as err:
-        print(f"Database connection error: {err}")
+        print(f"Database error: {err}")
         return None
 
 @app.route('/health', methods=['GET'])
@@ -40,53 +36,20 @@ def get_customer(customer_id):
     
     try:
         cursor = conn.cursor(dictionary=True)
-        cursor.execute(
-            "SELECT * FROM customers WHERE customer_id = %s",
-            (customer_id,)
-        )
+        cursor.execute("SELECT * FROM customers WHERE customer_id = %s", (customer_id,))
         customer = cursor.fetchone()
         
         if not customer:
             return jsonify({'error': 'Customer not found'}), 404
         
+        customer['created_at'] = customer['created_at'].isoformat() if customer['created_at'] else None
+        
         return jsonify(customer), 200
-        
     except mysql.connector.Error as err:
         return jsonify({'error': str(err)}), 500
     finally:
         cursor.close()
         conn.close()
-
-@app.route('/api/customers/list', methods=['GET'])
-def list_customers():
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({'error': 'Database connection failed'}), 500
-    
-    try:
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM customers")
-        customers = cursor.fetchall()
-        
-        return jsonify({'customers': customers}), 200
-        
-    except mysql.connector.Error as err:
-        return jsonify({'error': str(err)}), 500
-    finally:
-        cursor.close()
-        conn.close()
-
-#: Integrate with Order Service to fetch customer orders
-@app.route('/api/customers/<int:customer_id>/orders', methods=['GET'])
-def get_customer_orders(customer_id):
-    try:
-        response = requests.get(f"{ORDER_SERVICE_URL}/api/orders/customer/{customer_id}")
-        if response.status_code != 200:
-            return jsonify({'error': 'Failed to fetch orders from Order Service'}), response.status_code
-        orders = response.json()
-        return jsonify({'orders': orders}), 200
-    except requests.exceptions.RequestException as e:
-        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/customers/<int:customer_id>/loyalty', methods=['PUT'])
 def update_loyalty(customer_id):
@@ -107,19 +70,60 @@ def update_loyalty(customer_id):
         )
         conn.commit()
         
-        cursor.execute(
-            "SELECT * FROM customers WHERE customer_id = %s",
-            (customer_id,)
-        )
+        cursor.execute("SELECT * FROM customers WHERE customer_id = %s", (customer_id,))
         customer = cursor.fetchone()
         
-        return jsonify({
-            'success': True,
-            'customer': customer
-        }), 200
+        customer['created_at'] = customer['created_at'].isoformat() if customer['created_at'] else None
         
+        return jsonify({'success': True, 'customer': customer}), 200
     except mysql.connector.Error as err:
         conn.rollback()
+        return jsonify({'error': str(err)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/api/customers/list', methods=['GET'])
+def list_customers():
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM customers ORDER BY customer_id")
+        customers = cursor.fetchall()
+        
+        for customer in customers:
+            customer['created_at'] = customer['created_at'].isoformat() if customer['created_at'] else None
+        
+        return jsonify({'customers': customers}), 200
+    except mysql.connector.Error as err:
+        return jsonify({'error': str(err)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/api/customers/<int:customer_id>/orders', methods=['GET'])
+def get_customer_orders(customer_id):
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM orders WHERE customer_id = %s ORDER BY created_at DESC", (customer_id,))
+        orders = cursor.fetchall()
+        
+        for order in orders:
+            order['subtotal'] = float(order['subtotal'])
+            order['tax_rate'] = float(order['tax_rate'])
+            order['tax_amount'] = float(order['tax_amount'])
+            order['total'] = float(order['total'])
+            order['created_at'] = order['created_at'].isoformat() if order['created_at'] else None
+        
+        return jsonify({'orders': orders}), 200
+    except mysql.connector.Error as err:
         return jsonify({'error': str(err)}), 500
     finally:
         cursor.close()

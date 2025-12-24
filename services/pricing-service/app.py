@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import mysql.connector
-import requests
 from datetime import datetime
 
 app = Flask(__name__)
@@ -14,14 +13,11 @@ DB_CONFIG = {
     'database': 'ecommerce_system'
 }
 
-INVENTORY_SERVICE_URL = "http://localhost:5002"
-
 def get_db_connection():
     try:
-        conn = mysql.connector.connect(**DB_CONFIG)
-        return conn
+        return mysql.connector.connect(**DB_CONFIG)
     except mysql.connector.Error as err:
-        print(f"Database connection error: {err}")
+        print(f"Database error: {err}")
         return None
 
 @app.route('/health', methods=['GET'])
@@ -36,8 +32,8 @@ def health_check():
 def calculate_pricing():
     data = request.get_json()
     
-    if not data or 'products' not in data or 'region' not in data:
-        return jsonify({'error': 'Missing products list, or region'}), 400
+    if not data or 'products' not in data:
+        return jsonify({'error': 'Missing products list'}), 400
     
     conn = get_db_connection()
     if not conn:
@@ -51,24 +47,9 @@ def calculate_pricing():
         for product in data['products']:
             product_id = product['product_id']
             quantity = product['quantity']
+            unit_price = float(product['unit_price'])
+            product_name = product.get('product_name', f'Product {product_id}')
             
-            # Get base price from Inventory Service
-            inv_response = requests.get(f"{INVENTORY_SERVICE_URL}/api/inventory/check/{product_id}")
-            if inv_response.status_code != 200:
-                continue
-            
-            inv_data = inv_response.json()
-            # Check stock availability
-            if inv_data['quantity_available'] <= 0:
-                return jsonify({'error': f'Product {product_id} is out of stock'}), 400
-            else: # Adjust quantity if requested exceeds available stock
-                available_qty = inv_data['quantity_available']
-                if quantity > available_qty:
-                    print(f"Requested quantity for product {product_id} exceeds available stock. Adjusting to available quantity ➡ {available_qty}.")
-                    quantity = available_qty
-            base_price = inv_data['unit_price']
-            
-            # Check for discount rules
             cursor.execute(
                 "SELECT discount_percentage FROM pricing_rules WHERE product_id = %s AND min_quantity <= %s ORDER BY min_quantity DESC LIMIT 1",
                 (product_id, quantity)
@@ -76,14 +57,14 @@ def calculate_pricing():
             discount_rule = cursor.fetchone()
             
             discount_percentage = float(discount_rule['discount_percentage']) if discount_rule else 0
-            discount_amount = (base_price * quantity * discount_percentage) / 100
-            item_total = (base_price * quantity) - discount_amount
+            discount_amount = (unit_price * quantity * discount_percentage) / 100
+            item_total = (unit_price * quantity) - discount_amount
             
             items.append({
                 'product_id': product_id,
-                'product_name': inv_data['product_name'],
+                'product_name': product_name,
                 'quantity': quantity,
-                'unit_price': base_price,
+                'unit_price': unit_price,
                 'discount_percentage': discount_percentage,
                 'discount_amount': round(discount_amount, 2),
                 'item_total': round(item_total, 2)
@@ -91,8 +72,7 @@ def calculate_pricing():
             
             subtotal += item_total
         
-        # Get tax rate (default to Cairo)
-        region = data['region']
+        region = data.get('region', 'Cairo')
         cursor.execute("SELECT tax_rate FROM tax_rates WHERE region = %s", (region,))
         tax_rule = cursor.fetchone()
         tax_rate = float(tax_rule['tax_rate']) if tax_rule else 0
@@ -107,7 +87,6 @@ def calculate_pricing():
             'tax_amount': round(tax_amount, 2),
             'total': round(total, 2)
         }), 200
-        
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:

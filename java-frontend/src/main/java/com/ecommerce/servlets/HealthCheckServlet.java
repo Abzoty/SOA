@@ -38,7 +38,7 @@ public class HealthCheckServlet extends HttpServlet {
         out.println("<link rel='stylesheet' href='css/health.css'>");
         out.println("</head><body>");
 
-        out.println("<a href='index.jsp' class='back-link'>← Back to Home</a>");
+        out.println("<a href='main' class='back-link'>← Back to Home</a>");
         out.println("<h1>Microservices Health Check</h1>");
 
         HttpClient client = HttpClient.newHttpClient();
