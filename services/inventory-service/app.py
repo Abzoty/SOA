@@ -88,7 +88,6 @@ def update_inventory():
 
     try:
         cursor = conn.cursor()
-        # Validate quantities first
         for p in data['products']:
             pid = p['product_id']
             qty = int(p['quantity'])
@@ -101,7 +100,6 @@ def update_inventory():
                 conn.rollback()
                 return jsonify({'error': f'Insufficient stock for product {pid}'}), 400
 
-        # Proceed to decrement
         for p in data['products']:
             pid = p['product_id']
             qty = int(p['quantity'])

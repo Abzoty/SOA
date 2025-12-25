@@ -32,13 +32,13 @@ def health_check():
 def send_notification():
     data = request.get_json()
     
-    if not data or 'order_id' not in data or 'customer_id' not in data:
+    if not data or 'order_id' not in data or 'customer_id' not in data or 'customer_name' not in data or 'customer_email' not in data:
         return jsonify({'error': 'Missing required fields'}), 400
     
     order_id = data['order_id']
     customer_id = data['customer_id']
-    customer_name = data.get('customer_name', 'Customer')
-    customer_email = data.get('customer_email', 'unknown@example.com')
+    customer_name = data['customer_name']
+    customer_email = data['customer_email']
     
     message = f"Dear {customer_name}, your order #{order_id} has been confirmed and is being processed."
     

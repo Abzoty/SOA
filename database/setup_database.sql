@@ -85,6 +85,3 @@ INSERT INTO tax_rates (region, tax_rate) VALUES
 CREATE USER IF NOT EXISTS 'ecommerce_user'@'localhost' IDENTIFIED BY 'Ecomm@2024Secure';
 GRANT SELECT, INSERT, UPDATE, DELETE ON ecommerce_system.* TO 'ecommerce_user'@'localhost';
 FLUSH PRIVILEGES;
-
--- Display confirmation
-SELECT 'Database setup completed successfully!' AS Status;

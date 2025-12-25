@@ -32,14 +32,14 @@ def health_check():
 def create_order():
     data = request.get_json()
     
-    if not data or 'customer_id' not in data or 'products' not in data or 'total_amount' not in data:
+    if not data or 'customer_id' not in data or 'products' not in data or 'subtotal' not in data or 'tax_rate' not in data or 'tax_amount' not in data or 'total_amount' not in data:
         return jsonify({'error': 'Missing required fields'}), 400
     
     customer_id = int(data['customer_id'])
     products = data['products']
-    subtotal = float(data.get('subtotal', 0))
-    tax_rate = float(data.get('tax_rate', 0))
-    tax_amount = float(data.get('tax_amount', 0))
+    subtotal = float(data.get('subtotal'))
+    tax_rate = float(data.get('tax_rate'))
+    tax_amount = float(data.get('tax_amount'))
     total = float(data['total_amount'])
     
     conn = get_db_connection()
@@ -66,6 +66,8 @@ def create_order():
         conn.commit()
         
         cursor.execute("SELECT * FROM orders WHERE order_id = %s", (order_id,))
+        # Each desc tuple has: (name, type_code, display_size, internal_size, precision, scale, null_ok)
+        # desc[0] extracts just the column names
         columns = [desc[0] for desc in cursor.description]
         row = cursor.fetchone()
         order = dict(zip(columns, row))
